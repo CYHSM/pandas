@@ -656,31 +656,31 @@ cdef class TextReader:
 
             # Header is in the file
             for level, hr in enumerate(prelim_header):
+                print(f"Processing level {level}, header row {hr}")
 
                 this_header = []
 
                 if self.parser.lines < hr + 1:
+                    print("Tokenizing rows...")
                     self._tokenize_rows(hr + 2)
 
                 if self.parser.lines == 0:
+                    print("No lines in parser.")
                     field_count = 0
                     start = self.parser.line_start[0]
 
                 # e.g., if header=3 and file only has 2 lines
-                elif (self.parser.lines < hr + 1
-                      and not isinstance(self.orig_header, list)) or (
-                          self.parser.lines < hr):
+                elif (self.parser.lines < hr + 1 and not isinstance(self.orig_header, list)) or (self.parser.lines < hr):
                     msg = self.orig_header
                     if isinstance(msg, list):
                         joined = ",".join(str(m) for m in msg)
                         msg = f"[{joined}], len of {len(msg)},"
-                    raise ParserError(
-                        f"Passed header={msg} but only "
-                        f"{self.parser.lines} lines in file")
+                    raise ParserError(f"Passed header={msg} but only {self.parser.lines} lines in file")
 
                 else:
                     field_count = self.parser.line_fields[hr]
                     start = self.parser.line_start[hr]
+                    print(f"Field count: {field_count}, Start: {start}")
 
                 unnamed_count = 0
                 unnamed_col_indices = []
@@ -688,19 +688,25 @@ cdef class TextReader:
                 for i in range(field_count):
                     word = self.parser.words[start + i]
 
-                    name = PyUnicode_DecodeUTF8(word, strlen(word),
-                                                self.encoding_errors)
+                    name = PyUnicode_DecodeUTF8(word, strlen(word), self.encoding_errors)
+                    print(f"Word {i}: '{word}', Decoded name: '{name}'")
 
                     if name == "":
+                        print("Empty name found.")
                         if self.has_mi_columns:
                             name = f"Unnamed: {i}_level_{level}"
+                            print(f"Setting multi-index column name: {name}")
                         else:
                             name = f"Unnamed: {i}"
+                            print(f"Setting unnamed column name: {name}")
 
                         unnamed_count += 1
                         unnamed_col_indices.append(i)
 
                     this_header.append(name)
+
+                print(f"This header: {this_header}")
+
 
                 if not self.has_mi_columns:
                     # Ensure that regular columns are used before unnamed ones
@@ -744,9 +750,10 @@ cdef class TextReader:
                         lc = len(this_header)
                         ic = (len(self.index_col) if self.index_col
                               is not None else 0)
+                        print(f"LC {lc}, IC {ic} Unnamed Count {unnamed_count}")                        
 
                         # if wrong number of blanks or no index, not our format
-                        if (lc != unnamed_count and lc - ic > unnamed_count) or ic == 0:
+                        if (lc != unnamed_count and lc - ic >= unnamed_count) or ic == 0:
                             hr -= 1
                             self.parser_start -= 1
                             this_header = [None] * lc

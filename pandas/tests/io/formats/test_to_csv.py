@@ -14,7 +14,7 @@ from pandas import (
     compat,
 )
 import pandas._testing as tm
-
+from pandas.testing import assert_frame_equal
 
 class TestToCSV:
     def test_to_csv_with_single_column(self):
@@ -367,6 +367,22 @@ $1$,$2$
         exp_rows = ["foo", "bar", "1"]
         exp = tm.convert_rows_list_to_csv_str(exp_rows)
         assert df.to_csv(index=False) == exp
+
+    def test_to_csv_multi_index_nan(self):
+        # Create a MultiIndex DataFrame
+        columns = pd.MultiIndex.from_tuples([('Level 1', 'Level 2')], names=['level1', 'level2'])
+        data = [[np.nan], [0.1], [0.4]]
+        df_complex = pd.DataFrame(data, columns=columns)
+
+        # Expected DataFrame
+        expected_df = pd.DataFrame(data, columns=columns, index=range(3))
+
+        # Save and load the DataFrame as a CSV
+        with tm.ensure_clean("complex_data.csv") as path:
+            df_complex.to_csv(path)
+            loaded_df_complex = pd.read_csv(path, header=[0, 1], index_col=0)
+
+        assert_frame_equal(loaded_df_complex, expected_df)
 
     @pytest.mark.parametrize(
         "ind,expected",
